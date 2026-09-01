@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>실시간 미세먼지 조회</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: linear-gradient(135deg, #e8f1ff, #f8fbff);
+      color: #1f2937;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 45px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      font-size: 38px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 17px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 30px;
+      margin-bottom: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 26px;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    input {
+      flex: 1;
+      min-width: 220px;
+      padding: 17px;
+      border: 2px solid #3b82f6;
+      border-radius: 15px;
+      font-size: 18px;
+      outline: none;
+    }
+
+    button {
+      padding: 17px 28px;
+      border: none;
+      border-radius: 15px;
+      background: #2563eb;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 20px;
+      white-space: pre-line;
+      line-height: 1.6;
+      color: #64748b;
+    }
+
+    .error {
+      color: #dc2626 !important;
+    }
+
+    .success {
+      color: #16a34a !important;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 20px;
+      border-radius: 18px;
+    }
+
+    .label {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .grade {
+      margin-top: 8px;
+      color: #64748b;
+    }
+
+    footer {
+      text-align: center;
+      color: #94a3b8;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 600px) {
+      button {
+        width: 100%;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <header>
+      <h1>🌫️ 실시간 미세먼지 조회</h1>
+      <div class="subtitle">
+        AirKorea 공공데이터 기반 대기질 정보
+      </div>
+    </header>
+
+
+    <!-- 검색창 -->
+
+    <section class="card">
+
+      <h2>측정소 검색</h2>
+
+      <div class="search-box">
+
+        <input
+          id="stationName"
+          type="text"
+          value="대도동"
+          placeholder="예: 대도동"
+        >
+
+        <button
+          id="searchButton"
+          onclick="searchAir()"
+        >
+          미세먼지 조회
+        </button>
+
+      </div>
+
+      <div id="status">
+        측정소 이름을 입력하고 조회하세요.
+      </div>
+
+    </section>
+
+
+    <!-- 결과 -->
+
+    <section
+      id="resultCard"
+      class="card hidden"
+    >
+
+      <h2 id="resultTitle">
+        조회 결과
+      </h2>
+
+
+      <div class="result-grid">
+
+        <div class="item">
+          <div class="label">미세먼지 PM10</div>
+          <div class="value" id="pm10">-</div>
+          <div class="grade" id="pm10Grade"></div>
+        </div>
+
+
+        <div class="item">
+          <div class="label">초미세먼지 PM2.5</div>
+          <div class="value" id="pm25">-</div>
+          <div class="grade" id="pm25Grade"></div>
+        </div>
+
+
+        <div class="item">
+          <div class="label">통합대기환경지수</div>
+          <div class="value" id="khai">-</div>
+          <div class="grade" id="khaiGrade"></div>
+        </div>
+
+
+        <div class="item">
+          <div class="label">측정 시간</div>
+          <div
+            class="value"
+            id="dataTime"
+            style="font-size: 16px"
+          >
+            -
+          </div>
+        </div>
+
+
+        <div class="item">
+          <div class="label">오존 O₃</div>
+          <div class="value" id="o3">-</div>
+        </div>
+
+
+        <div class="item">
+          <div class="label">이산화질소 NO₂</div>
+          <div class="value" id="no2">-</div>
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <footer>
+      AirKorea · 한국환경공단 공공데이터
+    </footer>
+
+  </div>
+
+
+  <script>
+
+    const gradeName = {
+      "1": "좋음",
+      "2": "보통",
+      "3": "나쁨",
+      "4": "매우 나쁨"
+    };
+
+
+    function showStatus(message, type = "") {
+
+      const status =
+        document.getElementById("status");
+
+      status.textContent = message;
+      status.className = type;
+
+    }
+
+
+    function setValue(id, value, unit = "") {
+
+      const element =
+        document.getElementById(id);
+
+      if (
+        value === null ||
+        value === undefined ||
+        value === "" ||
+        value === "-"
+      ) {
+
+        element.textContent = "-";
+
+      } else {
+
+        element.textContent =
+          value + unit;
+
+      }
+
+    }
+
+
+    async function searchAir() {
+
+      const stationName =
+        document
+          .getElementById("stationName")
+          .value
+          .trim();
+
+
+      const button =
+        document.getElementById(
+          "searchButton"
+        );
+
+
+      const resultCard =
+        document.getElementById(
+          "resultCard"
+        );
+
+
+      if (!stationName) {
+
+        showStatus(
+          "측정소 이름을 입력해주세요.",
+          "error"
+        );
+
+        return;
+
+      }
+
+
+      button.disabled = true;
+      button.textContent = "조회 중...";
+
+      resultCard.classList.add("hidden");
+
+      showStatus(
+        "대기질 데이터를 불러오는 중입니다..."
+      );
+
+
+      try {
+
+        const response =
+          await fetch(
+
+            "/api/air?stationName=" +
+
+            encodeURIComponent(
+              stationName
+            )
+
+          );
+
+
+        const text =
+          await response.text();
+
+
+        let data;
+
+
+        try {
+
+          data = JSON.parse(text);
+
+        } catch {
+
+          throw new Error(
+
+            "서버 응답 형식 오류입니다.\n\n" +
+
+            text.substring(0, 300)
+
+          );
+
+        }
+
+
+        if (!response.ok) {
+
+          throw new Error(
+
+            data.error ||
+
+            "데이터 조회에 실패했습니다."
+
+          );
+
+        }
+
+
+        if (!data.success) {
+
+          throw new Error(
+
+            data.error ||
+
+            "데이터를 가져오지 못했습니다."
+
+          );
+
+        }
+
+
+        document
+          .getElementById("resultTitle")
+          .textContent =
+
+          (data.stationName || stationName)
+
+          +
+
+          " 측정소 조회 결과";
+
+
+        setValue(
+          "pm10",
+          data.pm10Value,
+          " ㎍/㎥"
+        );
+
+
+        setValue(
+          "pm25",
+          data.pm25Value,
+          " ㎍/㎥"
+        );
+
+
+        setValue(
+          "khai",
+          data.khaiValue
+        );
+
+
+        setValue(
+          "dataTime",
+          data.dataTime
+        );
+
+
+        setValue(
+          "o3",
+          data.o3Value,
+          " ppm"
+        );
+
+
+        setValue(
+          "no2",
+          data.no2Value,
+          " ppm"
+        );
+
+
+        document
+          .getElementById("pm10Grade")
+          .textContent =
+
+          gradeName[data.pm10Grade] || "";
+
+
+        document
+          .getElementById("pm25Grade")
+          .textContent =
+
+          gradeName[data.pm25Grade] || "";
+
+
+        document
+          .getElementById("khaiGrade")
+          .textContent =
+
+          gradeName[data.khaiGrade] || "";
+
+
+        resultCard
+          .classList
+          .remove("hidden");
+
+
+        showStatus(
+          "✓ 조회가 완료되었습니다.",
+          "success"
+        );
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        showStatus(
+
+          "조회에 실패했습니다.\n\n" +
+
+          error.message,
+
+          "error"
+
+        );
+
+      } finally {
+
+        button.disabled = false;
+
+        button.textContent =
+          "미세먼지 조회";
+
+      }
+
+    }
+
+
+    document
+      .getElementById("stationName")
+      .addEventListener(
+        "keydown",
+        function(event) {
+
+          if (
+            event.key === "Enter"
+          ) {
+
+            searchAir();
+
+          }
+
+        }
+      );
+
+  </script>
+
+</body>
+</html>
